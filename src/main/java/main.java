@@ -15,8 +15,7 @@ public class main {
         SparkConf conf = new SparkConf().setAppName("first").setMaster("local");
         JavaSparkContext sc = new JavaSparkContext(conf);
         // read file use encoding format: GBK
-//        JavaRDD<String> fileRDD = sc.hadoopFile(filePath, TextInputFormat.class, LongWritable.class, Text.class).map(p -> new String(p._2.getBytes(), 0, p._2.getLength(), "GBK"));
-        JavaRDD<String> fileRDD = sc.textFile(filePath);
+        JavaRDD<String> fileRDD = sc.hadoopFile(filePath, TextInputFormat.class, LongWritable.class, Text.class).map(p -> new String(p._2.getBytes(), 0, p._2.getLength(), "GBK"));
         fileRDD = fileRDD.map(s->new String(s.getBytes(),0,s.length(),"gbk"));
 //        fileRDD.mapToPair(s -> new Tuple2(s, 1)).reduceByKey((a, b) -> Integer.getInteger(a.toString()) + Integer.getInteger(b.toString())).take(10).stream().forEach(System.out::println);
 //        fileRDD.mapToPair(s -> new Tuple2(s, 1)).reduce((a,b)->a).take(10).stream().forEach(System.out::println);
