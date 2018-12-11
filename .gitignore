@@ -1,0 +1,7 @@
+*.dat
+./gradlew
+./gradlew.bat
+./test.txt
+./out
+./gradle
+./.gradle
