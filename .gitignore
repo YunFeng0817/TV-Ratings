@@ -1,7 +1,11 @@
 *.dat
-./gradlew
-./gradlew.bat
-./test.txt
-./out
-./gradle
-./.gradle
+.gradle/
+.idea/workspace.xml
+gradle/
+gradlew
+gradlew.bat
+out/
+src/main/java/test.java
+src/main/resources/
+src/test/
+test.txt
