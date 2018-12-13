@@ -6,7 +6,7 @@ import java.text.SimpleDateFormat;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class closeEvent extends event {
+class closeEvent extends event {
 
     closeEvent(int typeID, String recorder) throws ParseException {
         super(typeID, recorder);
