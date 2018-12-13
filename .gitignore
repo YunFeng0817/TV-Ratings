@@ -9,3 +9,5 @@ src/main/java/test.java
 src/main/resources/
 src/test/
 test.txt
+people.json
+spark-warehouse/

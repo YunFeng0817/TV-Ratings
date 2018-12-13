@@ -6,13 +6,13 @@ import java.text.SimpleDateFormat;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-class channelQuitEvent extends channelEvent {
-    private String channel;
-    private String show;
-
-    channelQuitEvent(int typeID, String recorder) throws ParseException {
+/**
+ * This class is an abstract of the event that the user collect one liked show
+ */
+class channelCollectEvent extends channelEvent {
+    channelCollectEvent(int typeID, String recorder) throws ParseException {
         super(typeID);
-        super.eventFormat = commonPrefix + "5" + baseForm + detailTime + detailTime + wildcard + wildcard + wildcard + caughtWildcard + caughtWildcard + wildcard + wildcard + wildcard + wildcard + "\\|\\d+" + recordTimeFormat; // messageID|5|随机序列|CA卡号|序列号|结束时间|开始时间|ServiceID|TSID|频点|频道名称|节目名称|授权|信号强度|信号质量|是否SDV节目|持续时间|时间
+        super.eventFormat = commonPrefix + "23" + baseFormPlus + wildcard + wildcard + wildcard + caughtWildcard + caughtWildcard + wildcard + wildcard + wildcard + recordTimeFormat; // messageID|23|随机序列|CA卡号|序列号|时间|ServiceID|TSID|频点|频道名称|节目名称|授权|信号强度|信号质量|时间
         Pattern eventFormatPattern = Pattern.compile(super.eventFormat);
         Matcher eventFormatMatcher = eventFormatPattern.matcher(recorder);
         if (eventFormatMatcher.find()) {

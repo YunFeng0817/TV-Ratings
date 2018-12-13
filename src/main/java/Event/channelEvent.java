@@ -4,8 +4,8 @@ abstract class channelEvent extends event {
     String channel = "";
     String show = "";
 
-    channelEvent(int typeID, String recorder) {
-        super(typeID, recorder);
+    channelEvent(int typeID) {
+        super(typeID);
     }
 
     @Override

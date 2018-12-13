@@ -20,7 +20,6 @@ public class main {
 //        fileRDD.mapToPair(s -> new Tuple2(s, 1)).reduceByKey((a, b) -> Integer.getInteger(a.toString()) + Integer.getInteger(b.toString())).take(10).stream().forEach(System.out::println);
 //        fileRDD.mapToPair(s -> new Tuple2(s, 1)).reduce((a,b)->a).take(10).stream().forEach(System.out::println);
 //        fileRDD.map(s -> s.split("\\|")).map(s -> s[0]).take(10).stream().forEach(System.out::println);
-//        String channelQuit = commonPrefix + "5" + baseForm + detailTime + detailTime + wildcard + wildcard + wildcard + caughtWildcard + caughtWildcard + wildcard + wildcard + wildcard + wildcard + "\\|\\d+" + recordTime; // messageID|2|随机序列|CA卡号|序列号|结束时间|开始时间|ServiceID|TSID|频点|频道名称|节目名称|授权|信号强度|信号质量|是否SDV节目|持续时间|时间
         fileRDD.map(event::eventFactory).filter(Objects::nonNull).take(10).stream().forEach(System.out::println);
     }
 }
