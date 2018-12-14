@@ -9,6 +9,7 @@ public abstract class event implements Serializable {
     private int typeID;
     LocalDate recordTime; // record generation time
     LocalDate eventTIme; // the detailed time the event occurs
+    String CACardID; // the identification of one user(CA card number)
     static final String commonPrefix = "^\\d+\\|"; // messageID|
     static final String baseForm = "\\|\\w{17}\\|(\\d{15,16})\\|\\d{17}"; // |随机序列|CA卡号|序列号
     static final String detailTime = "\\|\\d{4}\\.\\d{2}\\.\\d{2}\\s\\d{2}:\\d{2}:\\d{2}"; // |yyyy.mm.dd hh:mm:ss
@@ -70,6 +71,14 @@ public abstract class event implements Serializable {
 
     public LocalDate getRecordTime() {
         return this.recordTime;
+    }
+
+    public String getCACardID() {
+        return CACardID;
+    }
+
+    public void setCACardID(String CACardID) {
+        this.CACardID = CACardID;
     }
 
     public void setRecordTime(LocalDate recordTime) {

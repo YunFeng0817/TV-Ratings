@@ -13,6 +13,7 @@ class closeEvent extends event {
         Pattern eventFormatPattern = Pattern.compile(super.eventFormat);
         Matcher eventFormatMatcher = eventFormatPattern.matcher(recorder);
         if (eventFormatMatcher.find()) {
+            super.CACardID = eventFormatMatcher.group(1);
             DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(recordDateTimeFormat);
             super.recordTime = LocalDate.parse(eventFormatMatcher.group(2).substring(0, 14), dateTimeFormatter);
         }

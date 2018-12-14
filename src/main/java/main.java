@@ -5,9 +5,12 @@ import org.apache.spark.api.java.JavaRDD;
 
 import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapred.TextInputFormat;
+import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.*;
 
 import java.util.Objects;
+
+import static org.apache.spark.sql.functions.desc;
 
 public class main {
     public static void main(String[] args) throws AnalysisException {
@@ -24,12 +27,12 @@ public class main {
         JavaRDD<event> events = fileRDD.map(event::eventFactory).filter(Objects::nonNull);
 //        Dataset<event> eventsDataSet = spark.createDataset(events.collect(), Encoders.bean(event.class));
 //        eventsDataSet.createTempView("test");
-//        spark.sql("SELECT recordTime from test").show();
         JavaRDD<channelEvent> channelEvents = events.filter(s -> s instanceof channelEvent).map(s -> (channelEvent) s);
         Dataset<channelEvent> channelEventsDS = spark.createDataset(channelEvents.collect(), Encoders.bean(channelEvent.class));
-        channelEventsDS.createTempView("test");
-        spark.sql("SELECT typeID from test").show();
+//        channelEventsDS.groupBy("channel").count().sort(desc("count")).show();
+//        channelEventsDS.groupBy("show").count().sort(desc("count")).show();
 //        channelEvents.collect().stream().forEach(System.out::println);
+        channelEventsDS.groupBy("CACardID").count().show();
 //        channelEventsDS.printSchema();
     }
 }

@@ -15,6 +15,7 @@ class channelCollectEvent extends channelEvent {
         Pattern eventFormatPattern = Pattern.compile(super.eventFormat);
         Matcher eventFormatMatcher = eventFormatPattern.matcher(recorder);
         if (eventFormatMatcher.find()) {
+            super.CACardID = eventFormatMatcher.group(1);
             super.channel = eventFormatMatcher.group(2);
             super.show = eventFormatMatcher.group(3);
             DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(recordDateTimeFormat);
