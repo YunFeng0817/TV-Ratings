@@ -37,20 +37,20 @@ public abstract class event implements Serializable {
                         return new openEvent(typeID, recorder);
 //                        return null;
                     case 2:
-//                        return new closeEvent(typeID, recorder);
-                        return null;
+                        return new closeEvent(typeID, recorder);
+//                        return null;
                     case 5:
-//                        return new channelQuitEvent(typeID, recorder);
-                        return null;
+                        return new channelQuitEvent(typeID, recorder);
+//                        return null;
                     case 21:
-//                        return new channelEnterEvent(typeID, recorder);
-                        return null;
+                        return new channelEnterEvent(typeID, recorder);
+//                        return null;
                     case 23:
-//                        return new channelCollectEvent(typeID, recorder);
-                        return null;
+                        return new channelCollectEvent(typeID, recorder);
+//                        return null;
                     case 97:
-//                        return new timeShiftShowEvent(typeID, recorder);
-                        return null;
+                        return new timeShiftShowEvent(typeID, recorder);
+//                        return null;
                     default:
                         return null;
                 }
@@ -64,8 +64,16 @@ public abstract class event implements Serializable {
         return this.typeID;
     }
 
+    public void setTypeID(int typeID) {
+        this.typeID = typeID;
+    }
+
     public LocalDate getRecordTime() {
         return this.recordTime;
+    }
+
+    public void setRecordTime(LocalDate recordTime) {
+        this.recordTime = recordTime;
     }
 
     @Override

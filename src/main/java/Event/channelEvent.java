@@ -1,11 +1,27 @@
 package Event;
 
-abstract class channelEvent extends event {
+public abstract class channelEvent extends event {
     String channel = "";
     String show = "";
 
     channelEvent(int typeID) {
         super(typeID);
+    }
+
+    public String getChannel() {
+        return channel;
+    }
+
+    public void setChannel(String channel) {
+        this.channel = channel;
+    }
+
+    public String getShow() {
+        return show;
+    }
+
+    public void setShow(String show) {
+        this.show = show;
     }
 
     @Override
