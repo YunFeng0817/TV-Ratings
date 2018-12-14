@@ -192,9 +192,9 @@ public class JavaSparkSQLExample {
         transformedDS.collect(); // Returns [2, 3, 4]
 
         // DataFrames can be converted to a Dataset by providing a class. Mapping based on name
-        String path = "people1.json";
-        Dataset<Person> peopleDS = spark.read().json(path).as(personEncoder);
-        peopleDS.show();
+//        String path = "people1.json";
+//        Dataset<Person> peopleDS = spark.read().json(path).as(personEncoder);
+//        peopleDS.show();
         // +----+-------+
         // | age|   name|
         // +----+-------+

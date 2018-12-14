@@ -1,14 +1,14 @@
 package Event;
 
 import java.io.Serializable;
-import java.text.ParseException;
-import java.util.Date;
+import java.time.LocalDate;
 import java.util.regex.*;
+import java.time.format.DateTimeParseException;
 
 public abstract class event implements Serializable {
-    private final int typeID;
-    Date recordTime; // record generation time
-    Date eventTIme; // the detailed time the event occurs
+    private int typeID;
+    LocalDate recordTime; // record generation time
+    LocalDate eventTIme; // the detailed time the event occurs
     static final String commonPrefix = "^\\d+\\|"; // messageID|
     static final String baseForm = "\\|\\w{17}\\|(\\d{15,16})\\|\\d{17}"; // |随机序列|CA卡号|序列号
     static final String detailTime = "\\|\\d{4}\\.\\d{2}\\.\\d{2}\\s\\d{2}:\\d{2}:\\d{2}"; // |yyyy.mm.dd hh:mm:ss
@@ -16,7 +16,7 @@ public abstract class event implements Serializable {
     static final String recordTimeFormat = "\\|(\\d{17})"; // e.g. |20160502035932193
     static final String wildcard = "\\|.*";
     static final String caughtWildcard = "\\|(.*)";
-    static final String recordDateTimeFormat = "yyyyMMddkkmmssSSS"; // the parse format for DateFormat class
+    static final String recordDateTimeFormat = "yyyyMMddHHmmss"; // the parse format for DateFormat class
     static final String eventDateTimeFormat = "yyyy.MM.dd kk:mm:ss"; // the parse format for DateFormat class
     String eventFormat;
 
@@ -34,8 +34,8 @@ public abstract class event implements Serializable {
             try {
                 switch (typeID) {
                     case 1:
-//                        return new openEvent(typeID, recorder);
-                        return null;
+                        return new openEvent(typeID, recorder);
+//                        return null;
                     case 2:
 //                        return new closeEvent(typeID, recorder);
                         return null;
@@ -49,16 +49,23 @@ public abstract class event implements Serializable {
 //                        return new channelCollectEvent(typeID, recorder);
                         return null;
                     case 97:
-                        return new timeShiftShowEvent(typeID, recorder);
-//                        return null;
+//                        return new timeShiftShowEvent(typeID, recorder);
+                        return null;
                     default:
                         return null;
                 }
-            } catch (ParseException e) {
-                return null;
+            } catch (DateTimeParseException ignored) {
             }
         }
         return null;
+    }
+
+    public int getTypeID() {
+        return this.typeID;
+    }
+
+    public LocalDate getRecordTime() {
+        return this.recordTime;
     }
 
     @Override
