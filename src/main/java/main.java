@@ -33,9 +33,10 @@ public class main {
 //        channelEventsDS.groupBy("show").count().sort(desc("count")).show();
 //        channelEvents.collect().stream().forEach(System.out::println);
         // compute the TV ratings
-        channelEventsDS.dropDuplicates("CACardID").groupBy("show").count().sort(desc("count")).show();
+//        channelEventsDS.dropDuplicates("CACardID").groupBy("show").count().sort(desc("count")).show();
+//        channelEventsDS.printSchema();
 //        eventsDataSet.groupBy("CACardID").count().sort(desc("count")).show();
-//        eventsDataSet.where("CACardID=825010226372496").sort("recordTime").show();
+        eventsDataSet.where("CACardID=825010402320906").sort("recordTime").show();
 //        channelEventsDS.printSchema();
     }
 }

@@ -8,20 +8,20 @@ public abstract class channelEvent extends event {
         super(typeID);
     }
 
-    public String getChannel() {
-        return channel;
-    }
-
-    public void setChannel(String channel) {
-        this.channel = channel;
-    }
-
     public String getShow() {
         return show;
     }
 
     public void setShow(String show) {
         this.show = show;
+    }
+
+    public String getChannel() {
+        return channel;
+    }
+
+    public void setChannel(String channel) {
+        this.channel = channel;
     }
 
     @Override

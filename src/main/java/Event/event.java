@@ -1,14 +1,15 @@
 package Event;
 
 import java.io.Serializable;
-import java.time.LocalDate;
+import java.sql.Timestamp;
+import java.text.ParseException;
+import java.util.Date;
 import java.util.regex.*;
-import java.time.format.DateTimeParseException;
 
 public abstract class event implements Serializable {
     private int typeID;
-    LocalDate recordTime; // record generation time
-    LocalDate eventTIme; // the detailed time the event occurs
+    Date recordTime; // record generation time
+    Date eventTIme; // the detailed time the event occurs
     String CACardID; // the identification of one user(CA card number)
     static final String commonPrefix = "^\\d+\\|"; // messageID|
     static final String baseForm = "\\|\\w{17}\\|(\\d{15,16})\\|\\d{17}"; // |随机序列|CA卡号|序列号
@@ -17,7 +18,7 @@ public abstract class event implements Serializable {
     static final String recordTimeFormat = "\\|(\\d{17})"; // e.g. |20160502035932193
     static final String wildcard = "\\|.*";
     static final String caughtWildcard = "\\|(.*)";
-    static final String recordDateTimeFormat = "yyyyMMddHHmmss"; // the parse format for DateFormat class
+    static final String recordDateTimeFormat = "yyyyMMddkkmmssSSS"; // the parse format for DateFormat class
     static final String eventDateTimeFormat = "yyyy.MM.dd kk:mm:ss"; // the parse format for DateFormat class
     String eventFormat;
 
@@ -35,42 +36,35 @@ public abstract class event implements Serializable {
             try {
                 switch (typeID) {
                     case 1:
-                        return new openEvent(typeID, recorder);
-//                        return null;
+//                        return new openEvent(typeID, recorder);
+                        return null;
                     case 2:
-                        return new closeEvent(typeID, recorder);
-//                        return null;
+//                        return new closeEvent(typeID, recorder);
+                        return null;
                     case 5:
-                        return new channelQuitEvent(typeID, recorder);
-//                        return null;
+//                        return new channelQuitEvent(typeID, recorder);
+                        return null;
                     case 21:
-                        return new channelEnterEvent(typeID, recorder);
-//                        return null;
+//                        return new channelEnterEvent(typeID, recorder);
+                        return null;
                     case 23:
-                        return new channelCollectEvent(typeID, recorder);
-//                        return null;
+//                        return new channelCollectEvent(typeID, recorder);
+                        return null;
                     case 97:
                         return new timeShiftShowEvent(typeID, recorder);
 //                        return null;
                     default:
                         return null;
                 }
-            } catch (DateTimeParseException ignored) {
+            } catch (ParseException e) {
+                return null;
             }
         }
         return null;
     }
 
     public int getTypeID() {
-        return this.typeID;
-    }
-
-    public void setTypeID(int typeID) {
-        this.typeID = typeID;
-    }
-
-    public LocalDate getRecordTime() {
-        return this.recordTime;
+        return typeID;
     }
 
     public String getCACardID() {
@@ -81,8 +75,16 @@ public abstract class event implements Serializable {
         this.CACardID = CACardID;
     }
 
-    public void setRecordTime(LocalDate recordTime) {
-        this.recordTime = recordTime;
+    public void setTypeID(int typeID) {
+        this.typeID = typeID;
+    }
+
+    public Timestamp getRecordTime() {
+        return new Timestamp(recordTime.getTime());
+    }
+
+    public void setRecordTime(Timestamp recordTime) {
+        this.recordTime = new Date(recordTime.getTime());
     }
 
     @Override
