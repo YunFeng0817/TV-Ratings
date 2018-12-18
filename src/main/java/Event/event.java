@@ -39,20 +39,20 @@ public class event implements Serializable {
             try {
                 switch (typeID) {
                     case 1:
-//                        return new openEvent(typeID, recorder);
-                        return null;
+                        return new openEvent(typeID, recorder);
+//                        return null;
                     case 2:
-//                        return new closeEvent(typeID, recorder);
-                        return null;
+                        return new closeEvent(typeID, recorder);
+//                        return null;
                     case 5:
-//                        return new channelQuitEvent(typeID, recorder);
-                        return null;
+                        return new channelQuitEvent(typeID, recorder);
+//                        return null;
                     case 21:
-//                        return new channelEnterEvent(typeID, recorder);
-                        return null;
+                        return new channelEnterEvent(typeID, recorder);
+//                        return null;
                     case 23:
-//                        return new channelCollectEvent(typeID, recorder);
-                        return null;
+                        return new channelCollectEvent(typeID, recorder);
+//                        return null;
                     case 97:
                         return new timeShiftShowEvent(typeID, recorder);
 //                        return null;

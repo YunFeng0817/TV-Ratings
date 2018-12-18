@@ -34,15 +34,22 @@ public class main {
 //        channelEventsDS.groupBy("channel").count().sort(desc("count")).show();
 //        channelEventsDS.groupBy("show").count().sort(desc("count")).show();
 //        channelEvents.collect().stream().forEach(System.out::println);
-        // compute the TV ratings
-//        channelEventsDS.dropDuplicates("CACardID").groupBy("show").count().sort(desc("count")).show();
+        getTVRatings(channelEventsDS, Timestamp.valueOf("2016-1-1 12:00:00"), Timestamp.valueOf("2016-6-1 12:00:00"));
 //        channelEventsDS.first();
 //        channelEventsDS.printSchema();
 //        eventsDataSet.groupBy("CACardID").count().sort(desc("count")).show();
-        Dataset<event> certainChannelDS = eventsDataSet.where("CACardID=825010402320906").sort("recordTime").as(Encoders.bean(event.class));
-        System.out.println(certainChannelDS.first().getRecordTime());
+//        Dataset<event> certainChannelDS = eventsDataSet.where("CACardID=825010402320906").sort("recordTime").as(Encoders.bean(event.class));
 //        certainChannelDS.cache();
 //        List<event> lists = certainChannelDS.collectAsList();
-//        System.out.println(lists.get(lists.size() - 1).getRecordTime().getTime() - lists.get(0).getRecordTime().getTime());
+        spark.stop();
+    }
+
+    /**
+     * @param channelEventsDS the original TV channel data
+     * @param startTime       the start time for TV ratings statistics
+     * @param endTime         the end time for TV ratings statistics
+     */
+    private static void getTVRatings(Dataset<channelEvent> channelEventsDS, Timestamp startTime, Timestamp endTime) {
+        channelEventsDS.dropDuplicates("CACardID").where("recordTime between '" + startTime.toString() + "' and '" + endTime + "'").groupBy("channel", "show").count().sort(desc("count")).show();
     }
 }
