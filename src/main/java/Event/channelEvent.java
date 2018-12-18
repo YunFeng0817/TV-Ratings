@@ -8,6 +8,9 @@ public class channelEvent extends event {
         super(typeID);
     }
 
+    public channelEvent() {
+    }
+
     public String getShow() {
         return show;
     }
