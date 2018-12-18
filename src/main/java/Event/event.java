@@ -6,7 +6,7 @@ import java.text.ParseException;
 import java.util.Date;
 import java.util.regex.*;
 
-public abstract class event implements Serializable {
+public class event implements Serializable {
     private int typeID;
     Date recordTime; // record generation time
     Date eventTIme; // the detailed time the event occurs
@@ -21,6 +21,9 @@ public abstract class event implements Serializable {
     static final String recordDateTimeFormat = "yyyyMMddkkmmssSSS"; // the parse format for DateFormat class
     static final String eventDateTimeFormat = "yyyy.MM.dd kk:mm:ss"; // the parse format for DateFormat class
     String eventFormat;
+
+    public event() {
+    }
 
     event(int typeID) {
         this.typeID = typeID;

@@ -8,6 +8,8 @@ import org.apache.hadoop.mapred.TextInputFormat;
 import org.apache.spark.api.java.function.MapFunction;
 import org.apache.spark.sql.*;
 
+import java.sql.Timestamp;
+import java.util.List;
 import java.util.Objects;
 
 import static org.apache.spark.sql.functions.*;
@@ -34,9 +36,13 @@ public class main {
 //        channelEvents.collect().stream().forEach(System.out::println);
         // compute the TV ratings
 //        channelEventsDS.dropDuplicates("CACardID").groupBy("show").count().sort(desc("count")).show();
+//        channelEventsDS.first();
 //        channelEventsDS.printSchema();
 //        eventsDataSet.groupBy("CACardID").count().sort(desc("count")).show();
-        eventsDataSet.where("CACardID=825010402320906").sort("recordTime").show();
-//        channelEventsDS.printSchema();
+        Dataset<event> certainChannelDS = eventsDataSet.where("CACardID=825010402320906").sort("recordTime").as(Encoders.bean(event.class));
+        System.out.println(certainChannelDS.first().getRecordTime());
+//        certainChannelDS.cache();
+//        List<event> lists = certainChannelDS.collectAsList();
+//        System.out.println(lists.get(lists.size() - 1).getRecordTime().getTime() - lists.get(0).getRecordTime().getTime());
     }
 }

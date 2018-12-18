@@ -1,6 +1,6 @@
 package Event;
 
-public abstract class channelEvent extends event {
+public class channelEvent extends event {
     String channel = "";
     String show = "";
 
