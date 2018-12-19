@@ -83,7 +83,10 @@ public class event implements Serializable {
     }
 
     public Timestamp getRecordTime() {
-        return new Timestamp(recordTime.getTime());
+        if (recordTime != null) {
+            return new Timestamp(recordTime.getTime());
+        } else
+            return null;
     }
 
     public void setRecordTime(Timestamp recordTime) {

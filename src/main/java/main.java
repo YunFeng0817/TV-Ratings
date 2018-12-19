@@ -1,16 +1,15 @@
 import Event.channelEvent;
+import Event.channelQuitEvent;
 import Event.event;
-import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.api.java.JavaRDD;
+
+import java.util.Objects;
+import java.sql.Timestamp;
 
 import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapred.TextInputFormat;
-import org.apache.spark.api.java.function.MapFunction;
+import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.sql.*;
-
-import java.sql.Timestamp;
-import java.util.List;
-import java.util.Objects;
 
 import static org.apache.spark.sql.functions.*;
 
@@ -23,22 +22,26 @@ public class main {
                 .master("local[*]")
                 .config("spark.some.config.option", "some-value")
                 .getOrCreate();
+
         JavaSparkContext sc = JavaSparkContext.fromSparkContext(spark.sparkContext());
+//        sc.setLogLevel("WARN");
         // read file use encoding format: GBK
         JavaRDD<String> fileRDD = sc.hadoopFile(filePath, TextInputFormat.class, LongWritable.class, Text.class).map(p -> new String(p._2.getBytes(), 0, p._2.getLength(), "GBK"));
         JavaRDD<event> events = fileRDD.map(event::eventFactory).filter(Objects::nonNull);
+//        events.persist(StorageLevel.DISK_ONLY());
         Dataset<event> eventsDataSet = spark.createDataset(events.collect(), Encoders.bean(event.class));
-//        eventsDataSet.createTempView("test");
-        JavaRDD<channelEvent> channelEvents = events.filter(s -> s instanceof channelEvent).map(s -> (channelEvent) s);
-        Dataset<channelEvent> channelEventsDS = spark.createDataset(channelEvents.collect(), Encoders.bean(channelEvent.class));
-        //getTVRatings(channelEventsDS, Timestamp.valueOf("2016-1-1 12:00:00"), Timestamp.valueOf("2016-6-1 12:00:00"));
-//        channelEventsDS.groupBy("channel").count().sort(desc("count")).show();
-//        channelEventsDS.groupBy("show").count().sort(desc("count")).show();
-//        channelEvents.collect().stream().forEach(System.out::println);
-//        eventsDataSet.groupBy("CACardID").count().sort(desc("count")).show();
-//        Dataset<event> certainChannelDS = eventsDataSet.where("CACardID=825010402320906").sort("recordTime").as(Encoders.bean(event.class));
-//        certainChannelDS.cache();
-//        List<event> lists = certainChannelDS.collectAsList();
+        System.out.println(eventsDataSet.count());
+
+//        spark.createDataFrame(events, event.class).write().option("path", "./test.table").mode(SaveMode.Overwrite).saveAsTable("test1");
+        Dataset<event> test = spark.read().load("./test.table").as(Encoders.bean(event.class));
+        eventsDataSet = eventsDataSet.union(test);
+        System.out.println(eventsDataSet.count());
+
+//        JavaRDD<channelEvent> channelEvents = events.filter(s -> s instanceof channelEvent).map(s -> (channelEvent) s);
+//        Dataset<channelEvent> channelEventsDS = spark.createDataset(channelEvents.collect(), Encoders.bean(channelEvent.class));
+//        getTVRatings(channelEventsDS, Timestamp.valueOf("2016-1-1 12:00:00"), Timestamp.valueOf("2016-6-1 12:00:00"));
+//        getWatchTime(eventsDataSet, "825010304964177", Timestamp.valueOf("2016-1-1 12:00:00"), Timestamp.valueOf("2016-6-1 12:00:00"));
+//        getWatchTime(eventsDataSet, "825010385801697", Timestamp.valueOf("2016-1-1 12:00:00"), Timestamp.valueOf("2016-6-1 12:00:00"));
         spark.stop();
     }
 
@@ -49,8 +52,20 @@ public class main {
      */
     private static void getTVRatings(Dataset<channelEvent> channelEventsDS, Timestamp startTime, Timestamp endTime) {
         String timeFilter = "recordTime between '" + startTime.toString() + "' and '" + endTime + "'";
-        Dataset<? extends Dataset> totalUsers = channelEventsDS.dropDuplicates("CACardID").where(timeFilter).as(Encoders.bean(channelEventsDS.getClass()));
+        Dataset<channelEvent> totalUsers = channelEventsDS.dropDuplicates("CACardID").where(timeFilter);
         long userNum = totalUsers.count();
         totalUsers.groupBy("channel", "show").count().selectExpr("channel", "show", "count", "count/" + userNum).sort(desc("count")).show();
+    }
+
+    /**
+     * @param eventsDS
+     * @param CACardID
+     * @param startTime
+     * @param endTime
+     */
+    private static void getWatchTime(Dataset<event> eventsDS, String CACardID, Timestamp startTime, Timestamp endTime) {
+        String timeFilter = "recordTime between '" + startTime.toString() + "' and '" + endTime + "'";
+        Dataset<event> userRecords = eventsDS.where("CACardID=" + CACardID).where(timeFilter);
+        userRecords.show();
     }
 }
