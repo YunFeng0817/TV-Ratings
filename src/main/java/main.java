@@ -7,15 +7,17 @@ import java.sql.Timestamp;
 
 import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapred.TextInputFormat;
+import org.apache.spark.SparkContext;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.sql.*;
+import org.apache.spark.storage.StorageLevel;
 
 import static org.apache.spark.sql.functions.*;
 
 public class main {
     public static void main(String[] args) throws AnalysisException {
-        String filePath = "./data.dat";
+        String filePath = "./data";
         SparkSession spark = SparkSession
                 .builder()
                 .appName("first")
@@ -24,18 +26,19 @@ public class main {
                 .getOrCreate();
 
         JavaSparkContext sc = JavaSparkContext.fromSparkContext(spark.sparkContext());
-//        sc.setLogLevel("WARN");
-        // read file use encoding format: GBK
-        JavaRDD<String> fileRDD = sc.hadoopFile(filePath, TextInputFormat.class, LongWritable.class, Text.class).map(p -> new String(p._2.getBytes(), 0, p._2.getLength(), "GBK"));
-        JavaRDD<event> events = fileRDD.map(event::eventFactory).filter(Objects::nonNull);
-//        events.persist(StorageLevel.DISK_ONLY());
-        Dataset<event> eventsDataSet = spark.createDataset(events.collect(), Encoders.bean(event.class));
-        System.out.println(eventsDataSet.count());
+        readData(spark, sc, filePath);
+////        sc.setLogLevel("WARN");
+//        // read file use encoding format: GBK
+//        JavaRDD<String> fileRDD = sc.hadoopFile(filePath, TextInputFormat.class, LongWritable.class, Text.class).map(p -> new String(p._2.getBytes(), 0, p._2.getLength(), "GBK"));
+//        JavaRDD<event> events = fileRDD.map(event::eventFactory).filter(Objects::nonNull);
+////        events.persist(StorageLevel.DISK_ONLY());
+//        Dataset<event> eventsDataSet = spark.createDataset(events.collect(), Encoders.bean(event.class));
+//        System.out.println(eventsDataSet.count());
 
 //        spark.createDataFrame(events, event.class).write().option("path", "./test.table").mode(SaveMode.Overwrite).saveAsTable("test1");
-        Dataset<event> test = spark.read().load("./test.table").as(Encoders.bean(event.class));
-        eventsDataSet = eventsDataSet.union(test);
-        System.out.println(eventsDataSet.count());
+//        Dataset<event> test = spark.read().load("./test.table").as(Encoders.bean(event.class));
+//        eventsDataSet = eventsDataSet.union(test);
+//        System.out.println(eventsDataSet.count());
 
 //        JavaRDD<channelEvent> channelEvents = events.filter(s -> s instanceof channelEvent).map(s -> (channelEvent) s);
 //        Dataset<channelEvent> channelEventsDS = spark.createDataset(channelEvents.collect(), Encoders.bean(channelEvent.class));
@@ -67,5 +70,19 @@ public class main {
         String timeFilter = "recordTime between '" + startTime.toString() + "' and '" + endTime + "'";
         Dataset<event> userRecords = eventsDS.where("CACardID=" + CACardID).where(timeFilter);
         userRecords.show();
+    }
+
+    private static void readData(SparkSession sparkSession, JavaSparkContext javaSparkContext, String filePath) {
+        // read file use encoding format: GBK
+        JavaRDD<String> fileRDD = javaSparkContext.hadoopFile(filePath, TextInputFormat.class, LongWritable.class, Text.class).map(p -> new String(p._2.getBytes(), 0, p._2.getLength(), "GBK"));
+        JavaRDD<event> events = fileRDD.map(event::eventFactory).filter(Objects::nonNull);
+        events.persist(StorageLevel.MEMORY_AND_DISK());
+        JavaRDD<channelEvent> channelEvents = events.filter(s -> s instanceof channelEvent).map(s -> (channelEvent) s);
+        sparkSession.createDataFrame(channelEvents, channelEvent.class).write().option("path", "./channel").mode(SaveMode.Overwrite).saveAsTable("data1");
+        JavaRDD<channelQuitEvent> channelQuitEvents = events.filter(s -> s instanceof channelQuitEvent).map(s -> (channelQuitEvent) s);
+        events.filter(s -> s instanceof channelQuitEvent).map(s -> (channelQuitEvent) s);
+        sparkSession.createDataFrame(channelQuitEvents, channelQuitEvent.class).write().option("path", "./quit").mode(SaveMode.Overwrite).saveAsTable("data1");
+        sparkSession.createDataFrame(events, event.class).write().option("path", "./event").mode(SaveMode.Overwrite).saveAsTable("data1");
+        events.unpersist();
     }
 }
