@@ -25,23 +25,15 @@ public class main {
                 .getOrCreate();
 
         JavaSparkContext sc = JavaSparkContext.fromSparkContext(spark.sparkContext());
-        readData(spark, sc, filePath);
-////        sc.setLogLevel("WARN");
-//        // read file use encoding format: GBK
-//        JavaRDD<String> fileRDD = sc.hadoopFile(filePath, TextInputFormat.class, LongWritable.class, Text.class).map(p -> new String(p._2.getBytes(), 0, p._2.getLength(), "GBK"));
-//        JavaRDD<event> events = fileRDD.map(event::eventFactory).filter(Objects::nonNull);
-////        events.persist(StorageLevel.DISK_ONLY());
-//        Dataset<event> eventsDataSet = spark.createDataset(events.collect(), Encoders.bean(event.class));
-//        System.out.println(eventsDataSet.count());
+        sc.setLogLevel("WARN");
+//        readData(spark, sc, filePath);
+//        spark.read().load("./event").as(Encoders.bean(event.class));
+//        Dataset<channelEvent> channelEventDS = spark.read().load("./channel").as(Encoders.bean(channelEvent.class));
+//        channelEventDS.dropDuplicates("channel", "show").select("channel", "show").write().option("path", "./show").mode(SaveMode.Overwrite).saveAsTable("data1");
+//        generateSample(spark.read().load("./quit"), 0.00240582402);
 
-//        spark.createDataFrame(events, event.class).write().option("path", "./test.table").mode(SaveMode.Overwrite).saveAsTable("test1");
-//        Dataset<event> test = spark.read().load("./test.table").as(Encoders.bean(event.class));
-//        eventsDataSet = eventsDataSet.union(test);
-//        System.out.println(eventsDataSet.count());
 
-//        JavaRDD<channelEvent> channelEvents = events.filter(s -> s instanceof channelEvent).map(s -> (channelEvent) s);
-//        Dataset<channelEvent> channelEventsDS = spark.createDataset(channelEvents.collect(), Encoders.bean(channelEvent.class));
-//        getTVRatings(channelEventsDS, Timestamp.valueOf("2016-1-1 12:00:00"), Timestamp.valueOf("2016-6-1 12:00:00"));
+//        getTVRatings(channelEventDS, Timestamp.valueOf("2016-5-2 12:00:00"), Timestamp.valueOf("2016-5-2 14:00:00"));
 //        getWatchTime(eventsDataSet, "825010304964177", Timestamp.valueOf("2016-1-1 12:00:00"), Timestamp.valueOf("2016-6-1 12:00:00"));
 //        getWatchTime(eventsDataSet, "825010385801697", Timestamp.valueOf("2016-1-1 12:00:00"), Timestamp.valueOf("2016-6-1 12:00:00"));
         spark.stop();
@@ -69,6 +61,17 @@ public class main {
         String timeFilter = "recordTime between '" + startTime.toString() + "' and '" + endTime + "'";
         Dataset<event> userRecords = eventsDS.where("CACardID=" + CACardID).where(timeFilter);
         userRecords.show();
+    }
+
+    /**
+     * generate the specific number of samples for data mining and save as "./sample" table files
+     *
+     * @param events   the original data in  DataFrame form
+     * @param fraction the Sample ratio of all data
+     */
+    private static void generateSample(Dataset<Row> events, double fraction) {
+        Dataset<Row> userSample = events.select("CACardID").dropDuplicates("CACardID").sample(fraction);
+        events.join(userSample, events.col("CACardID").equalTo(userSample.col("CACardID")), "leftsemi").sort("CACardID", "recordTime").write().option("path", "./sample").mode(SaveMode.Overwrite).saveAsTable("data1");
     }
 
     /**
