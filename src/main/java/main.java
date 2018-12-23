@@ -8,6 +8,8 @@ import org.apache.hadoop.mapred.TextInputFormat;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.sql.*;
+import org.apache.spark.sql.types.DoubleType;
+import org.apache.spark.sql.types.LongType;
 import org.apache.spark.storage.StorageLevel;
 import scala.collection.Seq;
 
@@ -15,8 +17,7 @@ import java.sql.Timestamp;
 
 import java.util.Objects;
 
-import static org.apache.spark.sql.functions.collect_list;
-import static org.apache.spark.sql.functions.desc;
+import static org.apache.spark.sql.functions.*;
 
 public class main {
     public static void main(String[] args) throws AnalysisException {
@@ -32,19 +33,25 @@ public class main {
         sc.setLogLevel("WARN");
 //        readData(spark, sc, filePath);
 //        generateSample(spark.read().load("./quit"), 0.00240582402);
+//        generateTVRatings(spark.read().load("./quit"), Timestamp.valueOf("2016-5-2 00:00:00"), Timestamp.valueOf("2016-5-2 23:00:00"));
 //        cleanData(spark);
-        getTVRatings(spark.read().load("./channel"), Timestamp.valueOf("2016-5-2 12:00:00"), Timestamp.valueOf("2016-5-2 14:00:00"));
-        getUserStatusTransform(spark, "825010214566974", Timestamp.valueOf("2016-5-2 00:00:00"), Timestamp.valueOf("2016-5-2 23:00:00"));
-        getWatchTime(spark.read().load("./sample"), "825010214566974", Timestamp.valueOf("2016-5-2 00:00:00"), Timestamp.valueOf("2016-5-2 23:00:00"));
-//        spark.read().load("./sample").groupBy("channel", "show").sum("lastTime").sort(desc("sum(lastTime)")).show(100);
-//        spark.read().load("./sample").select("CACardID").dropDuplicates("CACardID").sort("CACardID").show(100);
-
-//        getWatchTime(eventsDataSet, "825010304964177", Timestamp.valueOf("2016-1-1 12:00:00"), Timestamp.valueOf("2016-6-1 12:00:00"));
-//        getWatchTime(eventsDataSet, "825010385801697", Timestamp.valueOf("2016-1-1 12:00:00"), Timestamp.valueOf("2016-6-1 12:00:00"));
+//        getTVRatings(spark.read().load("./channel"), Timestamp.valueOf("2016-5-2 12:00:00"), Timestamp.valueOf("2016-5-2 14:00:00"));
+//        getUserStatusTransform(spark, "825010214566974", Timestamp.valueOf("2016-5-2 00:00:00"), Timestamp.valueOf("2016-5-2 23:00:00"));
+//        getWatchTime(spark.read().load("./sample"), "825010214566974", Timestamp.valueOf("2016-5-2 00:00:00"), Timestamp.valueOf("2016-5-2 23:00:00"));
+        generateRatingPrediction(spark);
+//        Dataset<Row> channel = spark.read().load("./rating").filter("NOT( (channel = '')OR (show = 'NULL'))");
+//        channel.cache();
+//        Dataset<Row> channelProperty = spark.read().load("./quit").filter("NOT channel = ''").filter("lastTime>60").groupBy("channel").count();
+//        channelProperty = channelProperty.selectExpr("channel", "count", "count-1").toDF("channel", "count", "temp").selectExpr("channel", "temp/202642").toDF("channel", "weight");
+//        Seq<String> joinColumns = scala.collection.JavaConversions
+//                .asScalaBuffer(Lists.newArrayList("channel"));
+//        channel.join(channelProperty, joinColumns, "outer").show(200);
         spark.stop();
     }
 
     /**
+     * show the top 20 TV rating data
+     *
      * @param channelEventsDS the original TV channel data
      * @param startTime       the start time for TV ratings statistics
      * @param endTime         the end time for TV ratings statistics
@@ -52,11 +59,15 @@ public class main {
     private static void getTVRatings(Dataset<Row> channelEventsDS, Timestamp startTime, Timestamp endTime) {
         String timeFilter = "recordTime between '" + startTime.toString() + "' and '" + endTime + "'";
         Dataset<Row> totalUsers = channelEventsDS.where(timeFilter).dropDuplicates("CACardID");
+        totalUsers.cache();
         long userNum = totalUsers.count();
-        totalUsers.groupBy("channel", "show").count().selectExpr("channel", "show", "count", "count/" + userNum).sort(desc("count")).show();
+        totalUsers.groupBy("channel", "show").count().selectExpr("channel", "show", "count", "count/" + userNum).toDF("channel", "show", "count", "rating").sort(desc("count")).show();
+        totalUsers.unpersist();
     }
 
     /**
+     * show the top 100 users' watching time
+     *
      * @param eventsDS  the event DataSet
      * @param CACardID  the specific user's CA card ID
      * @param startTime the start time for TV ratings statistics
@@ -109,6 +120,42 @@ public class main {
     private static void cleanData(SparkSession sparkSession) {
         Dataset<Row> data = sparkSession.read().load("./sample");
         data.filter("lastTime<86400").write().option("path", "./sample1").mode(SaveMode.Overwrite).saveAsTable("data1");
+    }
+
+    /**
+     * generate training data for rating prediction
+     *
+     * @param sparkSession the spark session
+     */
+    private static void generateRatingPrediction(SparkSession sparkSession) {
+//        Dataset<Row> channel = sparkSession.read().load("./rating").filter("NOT( (channel = '')OR (show = 'NULL')OR (show = '')OR (show = 'null')OR (show = '以播出为准'))").filter("count>20").select("channel", "show", "count");
+//        channel.cache();
+//        Dataset<Row> channelProperty = sparkSession.read().load("./quit").filter("NOT channel = ''").filter("lastTime>60").groupBy("channel").count().selectExpr("channel", "count", "count-1").toDF("channel", "count", "temp").selectExpr("channel", "temp/202642").toDF("channel", "weight");
+//        Dataset<Row> showProperty = sparkSession.read().load("./channel").filter("typeID=21").selectExpr("show", "hour(recordTime)").groupBy("show").agg(functions.min(col("hour(recordTime)"))).toDF("show", "startHour");
+//        channel.join(channelProperty, scala.collection.JavaConversions
+//                .asScalaBuffer(Lists.newArrayList("channel")), "left_outer").join(showProperty, scala.collection.JavaConversions
+//                .asScalaBuffer(Lists.newArrayList("show")), "left_outer").sample(0.1).limit(100).write().option("path", "./source").mode(SaveMode.Overwrite).saveAsTable("data1");
+//        sparkSession.read().load("./source").select("show").dropDuplicates("show").as(Encoders.STRING()).collectAsList().forEach(System.out::println);
+        Dataset<Row> data = sparkSession.read().load("./source");
+        Dataset<Row> showtype = sparkSession.read().csv("./showtype.csv").toDF("show", "type").withColumn("type", col("type").cast("int"));
+        data.join(showtype, scala.collection.JavaConversions
+                .asScalaBuffer(Lists.newArrayList("show")), "left_outer").show(100);
+    }
+
+    /**
+     * generate rating data for TV rating prediction
+     *
+     * @param channelEventsDS the original TV channel data
+     * @param startTime       the start time for TV ratings statistics
+     * @param endTime         the end time for TV ratings statistics
+     */
+    private static void generateTVRatings(Dataset<Row> channelEventsDS, Timestamp startTime, Timestamp endTime) {
+        String timeFilter = "recordTime between '" + startTime.toString() + "' and '" + endTime + "'";
+        Dataset<Row> totalUsers = channelEventsDS.where(timeFilter).dropDuplicates("CACardID");
+        totalUsers.cache();
+        long userNum = totalUsers.count();
+        totalUsers.groupBy("channel", "show").count().selectExpr("channel", "show", "count", "count/" + userNum).toDF("channel", "show", "count", "rating").write().option("path", "./rating").mode(SaveMode.Overwrite).saveAsTable("data1");
+        totalUsers.unpersist();
     }
 
     /**
