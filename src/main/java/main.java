@@ -7,14 +7,18 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.TextInputFormat;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.ml.Pipeline;
+import org.apache.spark.ml.PipelineModel;
+import org.apache.spark.ml.PipelineStage;
+import org.apache.spark.ml.feature.VectorAssembler;
+import org.apache.spark.ml.regression.LinearRegression;
 import org.apache.spark.sql.*;
-import org.apache.spark.sql.types.DoubleType;
-import org.apache.spark.sql.types.LongType;
 import org.apache.spark.storage.StorageLevel;
 import scala.collection.Seq;
 
 import java.sql.Timestamp;
 
+import java.util.Arrays;
 import java.util.Objects;
 
 import static org.apache.spark.sql.functions.*;
@@ -38,14 +42,8 @@ public class main {
 //        getTVRatings(spark.read().load("./channel"), Timestamp.valueOf("2016-5-2 12:00:00"), Timestamp.valueOf("2016-5-2 14:00:00"));
 //        getUserStatusTransform(spark, "825010214566974", Timestamp.valueOf("2016-5-2 00:00:00"), Timestamp.valueOf("2016-5-2 23:00:00"));
 //        getWatchTime(spark.read().load("./sample"), "825010214566974", Timestamp.valueOf("2016-5-2 00:00:00"), Timestamp.valueOf("2016-5-2 23:00:00"));
-        generateRatingPrediction(spark);
-//        Dataset<Row> channel = spark.read().load("./rating").filter("NOT( (channel = '')OR (show = 'NULL'))");
-//        channel.cache();
-//        Dataset<Row> channelProperty = spark.read().load("./quit").filter("NOT channel = ''").filter("lastTime>60").groupBy("channel").count();
-//        channelProperty = channelProperty.selectExpr("channel", "count", "count-1").toDF("channel", "count", "temp").selectExpr("channel", "temp/202642").toDF("channel", "weight");
-//        Seq<String> joinColumns = scala.collection.JavaConversions
-//                .asScalaBuffer(Lists.newArrayList("channel"));
-//        channel.join(channelProperty, joinColumns, "outer").show(200);
+//        generateRatingPrediction(spark);
+        ratingPrediction(spark);
         spark.stop();
     }
 
@@ -128,6 +126,7 @@ public class main {
      * @param sparkSession the spark session
      */
     private static void generateRatingPrediction(SparkSession sparkSession) {
+        // generate source data file for training and testing
 //        Dataset<Row> channel = sparkSession.read().load("./rating").filter("NOT( (channel = '')OR (show = 'NULL')OR (show = '')OR (show = 'null')OR (show = '以播出为准'))").filter("count>20").select("channel", "show", "count");
 //        channel.cache();
 //        Dataset<Row> channelProperty = sparkSession.read().load("./quit").filter("NOT channel = ''").filter("lastTime>60").groupBy("channel").count().selectExpr("channel", "count", "count-1").toDF("channel", "count", "temp").selectExpr("channel", "temp/202642").toDF("channel", "weight");
@@ -135,11 +134,42 @@ public class main {
 //        channel.join(channelProperty, scala.collection.JavaConversions
 //                .asScalaBuffer(Lists.newArrayList("channel")), "left_outer").join(showProperty, scala.collection.JavaConversions
 //                .asScalaBuffer(Lists.newArrayList("show")), "left_outer").sample(0.1).limit(100).write().option("path", "./source").mode(SaveMode.Overwrite).saveAsTable("data1");
+//        channel.join(channelProperty, scala.collection.JavaConversions
+//                .asScalaBuffer(Lists.newArrayList("channel")), "left_outer").join(showProperty, scala.collection.JavaConversions
+//                .asScalaBuffer(Lists.newArrayList("show")), "left_outer").sample(0.1).limit(50).write().option("path", "./testSource").mode(SaveMode.Overwrite).saveAsTable("data1");
+
 //        sparkSession.read().load("./source").select("show").dropDuplicates("show").as(Encoders.STRING()).collectAsList().forEach(System.out::println);
+        // generate training and testing data set and write as train and test table file
+        Dataset<Row> showType = sparkSession.read().csv("./showtype.csv").toDF("show", "type").withColumn("type", col("type").cast("int"));
         Dataset<Row> data = sparkSession.read().load("./source");
-        Dataset<Row> showtype = sparkSession.read().csv("./showtype.csv").toDF("show", "type").withColumn("type", col("type").cast("int"));
-        data.join(showtype, scala.collection.JavaConversions
-                .asScalaBuffer(Lists.newArrayList("show")), "left_outer").show(100);
+        data.join(showType, scala.collection.JavaConversions
+                .asScalaBuffer(Lists.newArrayList("show")), "left_outer").filter("NOT type is null").select("startHour", "type", "weight", "count").write().option("path", "./train").mode(SaveMode.Overwrite).saveAsTable("data1");
+        data = sparkSession.read().load("./testSource");
+        data.join(showType, scala.collection.JavaConversions
+                .asScalaBuffer(Lists.newArrayList("show")), "left_outer").filter("NOT type is null").select("startHour", "type", "weight", "count").write().option("path", "./test").mode(SaveMode.Overwrite).saveAsTable("data1");
+    }
+
+    /**
+     * use linear regression method to predict the TV rating
+     *
+     * @param sparkSession the spark session
+     */
+    private static void ratingPrediction(SparkSession sparkSession) {
+        Dataset<Row> training = sparkSession.read().load("./train");
+        String[] features = {"startHour", "type", "weight"};
+        VectorAssembler vectorAssembler = new VectorAssembler().setInputCols(features).setOutputCol("features");
+        LinearRegression lr = new LinearRegression()
+                .setMaxIter(10)
+                .setRegParam(0.3)
+                .setElasticNetParam(0.8)
+                .setFeaturesCol("features")
+                .setLabelCol("count");
+        Pipeline pipeline = new Pipeline().setStages(Arrays.asList(vectorAssembler, lr).toArray(new PipelineStage[2]));
+        // Fit the model.
+        PipelineModel lrModel = pipeline.fit(training);
+        // Print the coefficients and intercept for linear regression.
+//        System.out.println("Coefficients: "
+//                + lrModel.coefficients() + " Intercept: " + lrModel.intercept());
     }
 
     /**
