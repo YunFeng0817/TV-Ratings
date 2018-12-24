@@ -7,10 +7,13 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.TextInputFormat;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.ml.ann.LossFunction;
 import org.apache.spark.ml.evaluation.RegressionEvaluator;
 import org.apache.spark.ml.feature.VectorAssembler;
 import org.apache.spark.ml.linalg.Vectors;
 import org.apache.spark.ml.regression.*;
+import org.apache.spark.mllib.tree.loss.Loss;
+import org.apache.spark.mllib.tree.loss.Losses;
 import org.apache.spark.sql.*;
 import org.apache.spark.storage.StorageLevel;
 import scala.collection.Seq;
@@ -159,7 +162,7 @@ public class main {
         Dataset<Row> testing = vectorAssembler.transform(sparkSession.read().load("./test"));
         LinearRegressionModel lrModel = new LinearRegression()
                 .setMaxIter(10000)
-                .setRegParam(0.3)
+                .setRegParam(0)
                 .setElasticNetParam(0.8)
                 .setFeaturesCol("features")
                 .setLabelCol("count")
@@ -168,14 +171,17 @@ public class main {
         Dataset<Row> predictions = lrModel.transform(testing);
         System.out.println("Use linear regression method result");
         predictions.show(100);
+        RegressionEvaluator regressionEvaluator = new RegressionEvaluator()
+                .setLabelCol("count")
+                .setPredictionCol("prediction")
+                .setMetricName("rmse");
+
         System.out.println("Coefficients: " + lrModel.coefficients() + " Intercept: " + lrModel.intercept());
         // Summarize the model over the training set and print out some metrics.
         LinearRegressionTrainingSummary trainingSummary = lrModel.summary();
         System.out.println("numIterations: " + trainingSummary.totalIterations());
-        System.out.println("objectiveHistory: " + Vectors.dense(trainingSummary.objectiveHistory()));
-        trainingSummary.residuals().show();
-        System.out.println("RMSE: " + trainingSummary.rootMeanSquaredError());
-        System.out.println("r2: " + trainingSummary.r2());
+        double rmse = regressionEvaluator.evaluate(predictions);
+        System.out.println("Root Mean Squared Error (RMSE) on test data = " + rmse);
 
         // Train a DecisionTree model.
         System.out.println("Use decision tree regression method result");
@@ -191,7 +197,38 @@ public class main {
                 .setLabelCol("count")
                 .setPredictionCol("prediction")
                 .setMetricName("rmse");
-        double rmse = evaluator.evaluate(predictions);
+        rmse = evaluator.evaluate(predictions);
+        System.out.println("Root Mean Squared Error (RMSE) on test data = " + rmse);
+
+        // Train a RandomForest model.
+        System.out.println("Use random forest regression method result");
+        RandomForestRegressionModel randomForestRegressionModel = new RandomForestRegressor()
+                .setLabelCol("count")
+                .setFeaturesCol("features")
+                .fit(training);
+        predictions = randomForestRegressionModel.transform(testing);
+        predictions.show(100);
+        evaluator = new RegressionEvaluator()
+                .setLabelCol("count")
+                .setPredictionCol("prediction")
+                .setMetricName("rmse");
+        rmse = evaluator.evaluate(predictions);
+        System.out.println("Root Mean Squared Error (RMSE) on test data = " + rmse);
+
+        // Train a GBT model.
+        System.out.println("Use gradient-boosted tree regression method result");
+        GBTRegressor gbt = new GBTRegressor()
+                .setLabelCol("count")
+                .setFeaturesCol("features")
+                .setMaxIter(100);
+        predictions = gbt.fit(training).transform(testing);
+        predictions.show(100);
+        // Select (prediction, true label) and compute test error.
+        evaluator = new RegressionEvaluator()
+                .setLabelCol("count")
+                .setPredictionCol("prediction")
+                .setMetricName("rmse");
+        rmse = evaluator.evaluate(predictions);
         System.out.println("Root Mean Squared Error (RMSE) on test data = " + rmse);
     }
 
