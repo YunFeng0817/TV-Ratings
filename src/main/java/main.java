@@ -7,25 +7,22 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.TextInputFormat;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.ml.Pipeline;
-import org.apache.spark.ml.PipelineModel;
-import org.apache.spark.ml.PipelineStage;
+import org.apache.spark.ml.evaluation.RegressionEvaluator;
 import org.apache.spark.ml.feature.VectorAssembler;
-import org.apache.spark.ml.regression.LinearRegression;
+import org.apache.spark.ml.linalg.Vectors;
+import org.apache.spark.ml.regression.*;
 import org.apache.spark.sql.*;
 import org.apache.spark.storage.StorageLevel;
 import scala.collection.Seq;
 
 import java.sql.Timestamp;
 
-import java.util.Arrays;
 import java.util.Objects;
 
 import static org.apache.spark.sql.functions.*;
 
 public class main {
     public static void main(String[] args) throws AnalysisException {
-        String filePath = "./data";
         SparkSession spark = SparkSession
                 .builder()
                 .appName("first")
@@ -35,7 +32,7 @@ public class main {
 
         JavaSparkContext sc = JavaSparkContext.fromSparkContext(spark.sparkContext());
         sc.setLogLevel("WARN");
-//        readData(spark, sc, filePath);
+//        readData(spark, sc, "./data");
 //        generateSample(spark.read().load("./quit"), 0.00240582402);
 //        generateTVRatings(spark.read().load("./quit"), Timestamp.valueOf("2016-5-2 00:00:00"), Timestamp.valueOf("2016-5-2 23:00:00"));
 //        cleanData(spark);
@@ -155,21 +152,47 @@ public class main {
      * @param sparkSession the spark session
      */
     private static void ratingPrediction(SparkSession sparkSession) {
-        Dataset<Row> training = sparkSession.read().load("./train");
-        String[] features = {"startHour", "type", "weight"};
-        VectorAssembler vectorAssembler = new VectorAssembler().setInputCols(features).setOutputCol("features");
-        LinearRegression lr = new LinearRegression()
-                .setMaxIter(10)
+        VectorAssembler vectorAssembler = new VectorAssembler()
+                .setInputCols(new String[]{"startHour", "type", "weight"})
+                .setOutputCol("features");
+        Dataset<Row> training = vectorAssembler.transform(sparkSession.read().load("./train"));
+        Dataset<Row> testing = vectorAssembler.transform(sparkSession.read().load("./test"));
+        LinearRegressionModel lrModel = new LinearRegression()
+                .setMaxIter(10000)
                 .setRegParam(0.3)
                 .setElasticNetParam(0.8)
                 .setFeaturesCol("features")
-                .setLabelCol("count");
-        Pipeline pipeline = new Pipeline().setStages(Arrays.asList(vectorAssembler, lr).toArray(new PipelineStage[2]));
+                .setLabelCol("count")
+                .fit(training);
         // Fit the model.
-        PipelineModel lrModel = pipeline.fit(training);
-        // Print the coefficients and intercept for linear regression.
-//        System.out.println("Coefficients: "
-//                + lrModel.coefficients() + " Intercept: " + lrModel.intercept());
+        Dataset<Row> predictions = lrModel.transform(testing);
+        System.out.println("Use linear regression method result");
+        predictions.show(100);
+        System.out.println("Coefficients: " + lrModel.coefficients() + " Intercept: " + lrModel.intercept());
+        // Summarize the model over the training set and print out some metrics.
+        LinearRegressionTrainingSummary trainingSummary = lrModel.summary();
+        System.out.println("numIterations: " + trainingSummary.totalIterations());
+        System.out.println("objectiveHistory: " + Vectors.dense(trainingSummary.objectiveHistory()));
+        trainingSummary.residuals().show();
+        System.out.println("RMSE: " + trainingSummary.rootMeanSquaredError());
+        System.out.println("r2: " + trainingSummary.r2());
+
+        // Train a DecisionTree model.
+        System.out.println("Use decision tree regression method result");
+        DecisionTreeRegressionModel dt = new DecisionTreeRegressor()
+                .setFeaturesCol("features")
+                .setLabelCol("count")
+                .fit(training);
+        // Fit the model.
+        predictions = dt.transform(testing);
+        predictions.show(100);
+        // Select (prediction, true label) and compute test error.
+        RegressionEvaluator evaluator = new RegressionEvaluator()
+                .setLabelCol("count")
+                .setPredictionCol("prediction")
+                .setMetricName("rmse");
+        double rmse = evaluator.evaluate(predictions);
+        System.out.println("Root Mean Squared Error (RMSE) on test data = " + rmse);
     }
 
     /**
