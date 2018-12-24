@@ -7,13 +7,12 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.TextInputFormat;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.apache.spark.ml.ann.LossFunction;
+import org.apache.spark.ml.clustering.KMeans;
+import org.apache.spark.ml.clustering.KMeansModel;
 import org.apache.spark.ml.evaluation.RegressionEvaluator;
 import org.apache.spark.ml.feature.VectorAssembler;
-import org.apache.spark.ml.linalg.Vectors;
+import org.apache.spark.ml.linalg.Vector;
 import org.apache.spark.ml.regression.*;
-import org.apache.spark.mllib.tree.loss.Loss;
-import org.apache.spark.mllib.tree.loss.Losses;
 import org.apache.spark.sql.*;
 import org.apache.spark.storage.StorageLevel;
 import scala.collection.Seq;
@@ -25,7 +24,7 @@ import java.util.Objects;
 import static org.apache.spark.sql.functions.*;
 
 public class main {
-    public static void main(String[] args) throws AnalysisException {
+    public static void main(String[] args) {
         SparkSession spark = SparkSession
                 .builder()
                 .appName("first")
@@ -39,11 +38,13 @@ public class main {
 //        generateSample(spark.read().load("./quit"), 0.00240582402);
 //        generateTVRatings(spark.read().load("./quit"), Timestamp.valueOf("2016-5-2 00:00:00"), Timestamp.valueOf("2016-5-2 23:00:00"));
 //        cleanData(spark);
-//        getTVRatings(spark.read().load("./channel"), Timestamp.valueOf("2016-5-2 12:00:00"), Timestamp.valueOf("2016-5-2 14:00:00"));
-//        getUserStatusTransform(spark, "825010214566974", Timestamp.valueOf("2016-5-2 00:00:00"), Timestamp.valueOf("2016-5-2 23:00:00"));
-//        getWatchTime(spark.read().load("./sample"), "825010214566974", Timestamp.valueOf("2016-5-2 00:00:00"), Timestamp.valueOf("2016-5-2 23:00:00"));
+        getTVRatings(spark.read().load("./channel"), Timestamp.valueOf("2016-5-2 12:00:00"), Timestamp.valueOf("2016-5-2 14:00:00"));
+        getUserStatusTransform(spark, "825010214566974", Timestamp.valueOf("2016-5-2 00:00:00"), Timestamp.valueOf("2016-5-2 23:00:00"));
+        getWatchTime(spark.read().load("./sample"), "825010385941182", Timestamp.valueOf("2016-5-2 00:00:00"), Timestamp.valueOf("2016-5-2 23:00:00"));
 //        generateRatingPrediction(spark);
         ratingPrediction(spark);
+//        generatePreferenceData(spark);
+        userPreferencePredict(spark, "825010226885922");
         spark.stop();
     }
 
@@ -230,6 +231,48 @@ public class main {
                 .setMetricName("rmse");
         rmse = evaluator.evaluate(predictions);
         System.out.println("Root Mean Squared Error (RMSE) on test data = " + rmse);
+    }
+
+    private static void userPreferencePredict(SparkSession sparkSession, String CACardID) {
+        // transform the DataSet to vector for machine learning
+        VectorAssembler vectorAssembler = new VectorAssembler()
+                .setInputCols(new String[]{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15"})
+                .setOutputCol("features");
+        Dataset<Row> data = sparkSession.read().load("users");
+        Dataset<Row> quit = sparkSession.read().load("quit");
+        Dataset<Row> showType = sparkSession.read().csv("./showtype.csv").toDF("show", "type").withColumn("type", col("type").cast("int"));
+        data = vectorAssembler.transform(data);
+        // Trains a k-means model.
+        KMeans kmeans = new KMeans().setK(6).setSeed(1L);
+        KMeansModel model = kmeans.fit(data).setFeaturesCol("features");
+        // Shows the result.
+        System.out.println("Cluster Centers: ");
+        Vector[] centers = model.clusterCenters();
+        for (Vector center : centers) {
+            System.out.println(center);
+        }
+        Dataset<Row> prediction = model.transform(data);
+        Dataset<Row> one = quit.filter("lastTime < 43200").where("CACardID=" + CACardID).join(showType, scala.collection.JavaConversions
+                .asScalaBuffer(Lists.newArrayList("show")), "outer").filter("NOT type is null").groupBy("CACardID").pivot("type").sum("lastTime").where("CACardID=" + CACardID).na().fill(0, new String[]{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15"});
+        one = vectorAssembler.transform(one);
+        int type = model.transform(one).select("prediction").as(Encoders.INT()).head();
+        Dataset<Row> sameTypeUsers = prediction.where("prediction=" + type).select("CACardID");
+        System.out.println("\n\nThe channels and shows recommended for user: " + CACardID);
+        quit.join(sameTypeUsers, quit.col("CACardID").equalTo(sameTypeUsers.col("CACardID")), "left_semi").groupBy("channel", "show").count().orderBy(desc("count")).show();
+    }
+
+    /**
+     * generate source data for training users' viewing preferences
+     *
+     * @param sparkSession the spark session
+     */
+    private static void generatePreferenceData(SparkSession sparkSession) {
+        Dataset<Row> quit = sparkSession.read().load("quit");
+        Dataset<Row> showType = sparkSession.read().csv("./showtype.csv").toDF("show", "type").withColumn("type", col("type").cast("int"));
+        Dataset<Row> user = quit.join(showType, scala.collection.JavaConversions
+                .asScalaBuffer(Lists.newArrayList("show")), "left_outer").filter("NOT type is null").groupBy("CACardID").count().sort(desc("count")).limit(500);
+        quit.filter("lastTime < 43200").join(user, quit.col("CACardID").equalTo(user.col("CACardID")), "left_semi").join(showType, scala.collection.JavaConversions
+                .asScalaBuffer(Lists.newArrayList("show")), "left_outer").filter("NOT type is null").groupBy("CACardID").pivot("type").sum("lastTime").na().fill(0, new String[]{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15"}).write().option("path", "./users").saveAsTable("table1");
     }
 
     /**
