@@ -169,6 +169,7 @@ public class main {
                 .setLabelCol("count")
                 .fit(training);
         // Fit the model.
+        long start = System.currentTimeMillis();
         Dataset<Row> predictions = lrModel.transform(testing);
         System.out.println("Use linear regression method result");
         predictions.show(100);
@@ -183,6 +184,8 @@ public class main {
         System.out.println("numIterations: " + trainingSummary.totalIterations());
         double rmse = regressionEvaluator.evaluate(predictions);
         System.out.println("Root Mean Squared Error (RMSE) on test data = " + rmse);
+        System.out.println("Cost time : " + (System.currentTimeMillis() - start));
+        start = System.currentTimeMillis();
 
         // Train a DecisionTree model.
         System.out.println("Use decision tree regression method result");
@@ -200,6 +203,8 @@ public class main {
                 .setMetricName("rmse");
         rmse = evaluator.evaluate(predictions);
         System.out.println("Root Mean Squared Error (RMSE) on test data = " + rmse);
+        System.out.println("Cost time : " + (System.currentTimeMillis() - start));
+        start = System.currentTimeMillis();
 
         // Train a RandomForest model.
         System.out.println("Use random forest regression method result");
@@ -215,6 +220,8 @@ public class main {
                 .setMetricName("rmse");
         rmse = evaluator.evaluate(predictions);
         System.out.println("Root Mean Squared Error (RMSE) on test data = " + rmse);
+        System.out.println("Cost time : " + (System.currentTimeMillis() - start));
+        start = System.currentTimeMillis();
 
         // Train a GBT model.
         System.out.println("Use gradient-boosted tree regression method result");
@@ -231,6 +238,7 @@ public class main {
                 .setMetricName("rmse");
         rmse = evaluator.evaluate(predictions);
         System.out.println("Root Mean Squared Error (RMSE) on test data = " + rmse);
+        System.out.println("Cost time : " + (System.currentTimeMillis() - start));
     }
 
     private static void userPreferencePredict(SparkSession sparkSession, String CACardID) {
@@ -252,6 +260,7 @@ public class main {
             System.out.println(center);
         }
         Dataset<Row> prediction = model.transform(data);
+        prediction.show();
         Dataset<Row> one = quit.filter("lastTime < 43200").where("CACardID=" + CACardID).join(showType, scala.collection.JavaConversions
                 .asScalaBuffer(Lists.newArrayList("show")), "outer").filter("NOT type is null").groupBy("CACardID").pivot("type").sum("lastTime").where("CACardID=" + CACardID).na().fill(0, new String[]{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15"});
         one = vectorAssembler.transform(one);
