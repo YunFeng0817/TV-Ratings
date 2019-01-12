@@ -41,6 +41,7 @@ public class main {
         getTVRatings(spark.read().load("./channel"), Timestamp.valueOf("2016-5-2 12:00:00"), Timestamp.valueOf("2016-5-2 14:00:00"));
         getUserStatusTransform(spark, "825010214566974", Timestamp.valueOf("2016-5-2 00:00:00"), Timestamp.valueOf("2016-5-2 23:00:00"));
         getWatchTime(spark.read().load("./sample"), "825010385941182", Timestamp.valueOf("2016-5-2 00:00:00"), Timestamp.valueOf("2016-5-2 23:00:00"));
+        watchTime(spark.read().load("./event"));
 //        generateRatingPrediction(spark);
         ratingPrediction(spark);
 //        generatePreferenceData(spark);
@@ -77,6 +78,14 @@ public class main {
         String CACardIDFilter = "CACardID=" + CACardID;
         eventsDS.where(CACardIDFilter).where(timeFilter).show();
         eventsDS.where(CACardIDFilter).where(timeFilter).groupBy("CACardID").sum("lastTime").sort(desc("sum(lastTime)")).show(100);
+    }
+
+    private static void watchTime(Dataset<Row> eventsDS) {
+        for (int i = 0; i < 23; i++) {
+            String timeFilter = "recordTime between '" + Timestamp.valueOf("2016-5-2 " + i + ":00:00").toString() + "' and '" + Timestamp.valueOf("2016-5-2 " + (i + 1) + ":00:00").toString() + "'";
+            long watchers = eventsDS.where(timeFilter).dropDuplicates("CACardID").count();
+            System.out.println("Time from " + i + ":00:00 to " + (i + 1) + ":00:00 has " + watchers + " watcers");
+        }
     }
 
     /**
