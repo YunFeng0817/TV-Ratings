@@ -81,7 +81,7 @@ public class main {
     }
 
     private static void watchTime(Dataset<Row> eventsDS) {
-        for (int i = 0; i < 23; i++) {
+        for (int i = 0; i < 24; i++) {
             String timeFilter = "recordTime between '" + Timestamp.valueOf("2016-5-2 " + i + ":00:00").toString() + "' and '" + Timestamp.valueOf("2016-5-2 " + (i + 1) + ":00:00").toString() + "'";
             long watchers = eventsDS.where(timeFilter).dropDuplicates("CACardID").count();
             System.out.println("Time from " + i + ":00:00 to " + (i + 1) + ":00:00 has " + watchers + " watcers");
